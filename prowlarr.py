@@ -372,5 +372,7 @@ class prowlarr:
 
 if __name__ == "__main__":
     test_search = sys.argv[1] if len(sys.argv) > 1 else "ubuntu"
+    test_cat = sys.argv[2] if len(sys.argv) > 2 else "all"
     prowlarr_engine = prowlarr()
-    prowlarr_engine.search(test_search)
+    prowlarr_engine.search(test_search, test_cat)
+
