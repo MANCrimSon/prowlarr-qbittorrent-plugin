@@ -67,7 +67,7 @@ Open `prowlarr.json` in any text editor and configure your instance:
   - `true` (default): Show `[Freeleech]` or other tracker tags.
   - `false`: Do not show flags.
 - `flags_position`:
-  - `"end"` (default): Append flags at the end (`Title [Tracker] [Freeleech]`), preserving alphabetical title sorting.
+  - `"end"` (default): Append flags before tracker at the end (`Title [Freeleech] [Tracker]`), preserving alphabetical title sorting.
   - `"start"`: Prepend flags at the beginning (`[Freeleech] Title [Tracker]`).
 - `filter_usenet`:
   - `true` (default): Filter out any Usenet releases returned by Prowlarr.

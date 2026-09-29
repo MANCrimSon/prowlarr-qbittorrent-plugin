@@ -97,9 +97,9 @@ class TestProwlarrPlugin(unittest.TestCase):
         self.assertEqual(len(captured_results), 1)
         res = captured_results[0]
 
-        # Check Freeleech flag and title formatting at the end
-        self.assertTrue(res['name'].endswith("[Freeleech]"))
-        self.assertEqual(res['name'], "Ubuntu 24.04 LTS Desktop [RuTracker] [Freeleech]")
+        # Check Freeleech flag before tracker at the end
+        self.assertTrue(res['name'].endswith("[RuTracker]"))
+        self.assertEqual(res['name'], "Ubuntu 24.04 LTS Desktop [Freeleech] [RuTracker]")
 
         # Check magnet preference
         self.assertEqual(res['link'], "magnet:?xt=urn:btih:ubuntu123")
@@ -147,7 +147,7 @@ class TestProwlarrPlugin(unittest.TestCase):
         self.assertNotIn('\n', name)
         self.assertNotIn('\r', name)
         self.assertNotIn('\t', name)
-        self.assertIn("CONTROL Resonant Remedy Entertainment Рейтинг 0.0 2020 Открыть игру [2020] [Byrutop] [Freeleech]", name)
+        self.assertIn("CONTROL Resonant Remedy Entertainment Рейтинг 0.0 2020 Открыть игру [2020] [Freeleech] [Byrutop]", name)
 
     def test_proxy_manager(self):
         pm = _ProxyManager()

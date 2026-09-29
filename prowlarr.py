@@ -270,18 +270,19 @@ class prowlarr:
                 if clean_flags:
                     flag_badge = f"[{'/'.join(clean_flags)}]"
 
-            # Format item name according to user preference (flags at the end by default)
+            # Format item name according to user preference
             if self.flags_position == 'start' and flag_badge:
                 if self.tracker_first:
                     formatted_name = f"{flag_badge} [{indexer}] {cleaned_title}"
                 else:
                     formatted_name = f"{flag_badge} {cleaned_title} [{indexer}]"
             else:
-                flag_suffix = f" {flag_badge}" if flag_badge else ""
+                # Default: flag before tracker, with tracker at the very end
+                flag_mid = f" {flag_badge}" if flag_badge else ""
                 if self.tracker_first:
-                    formatted_name = f"[{indexer}] {cleaned_title}{flag_suffix}"
+                    formatted_name = f"[{indexer}] {cleaned_title}{flag_mid}"
                 else:
-                    formatted_name = f"{cleaned_title} [{indexer}]{flag_suffix}"
+                    formatted_name = f"{cleaned_title}{flag_mid} [{indexer}]"
 
             # Determine download link: prefer magnetUrl, fallback to downloadUrl
             magnet_url = item.get('magnetUrl')
