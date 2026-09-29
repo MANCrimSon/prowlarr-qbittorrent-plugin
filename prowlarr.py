@@ -18,6 +18,13 @@ from http.cookiejar import CookieJar
 from threading import Lock
 from typing import Any, Dict, List, Optional, Union
 
+# Ensure UTF-8 output streams on Windows to prevent UnicodeEncodeError with non-cp1251 titles
+if sys.platform == 'win32' and hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 # qBittorrent nova3 runtime modules
 try:
     import helpers
@@ -344,7 +351,6 @@ class prowlarr:
                 redirect_url = e.headers.get('Location')
                 if redirect_url and redirect_url.startswith('magnet:?'):
                     return redirect_url
-            return None
         except Exception:
             return None
 
