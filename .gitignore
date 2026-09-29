@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+.pytest_cache/
+
+# AI Assistant & Internal State
+STATE.md
+state.md
+PROJECT_STATE.md
+GEMINI.md
+AGENTS.md
+.clinerules
+CHAT_CONTEXT.md
+.gemini/
+
+# Local configuration with secrets
+prowlarr.json
+*.local.json

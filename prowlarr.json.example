@@ -1,0 +1,8 @@
+{
+    "api_key": "YOUR_API_KEY_HERE",
+    "filter_usenet": true,
+    "show_flags": true,
+    "timeout_seconds": 30,
+    "tracker_first": false,
+    "url": "http://127.0.0.1:9696"
+}
