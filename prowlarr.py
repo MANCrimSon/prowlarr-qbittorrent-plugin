@@ -162,6 +162,7 @@ class prowlarr:
         'games': ['1000', '4000'],
         'movies': ['2000'],
         'music': ['3000'],
+        'pictures': None,
         'software': ['4000'],
         'tv': ['5000'],
     }
