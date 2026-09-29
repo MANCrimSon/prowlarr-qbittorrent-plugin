@@ -1,8 +1,9 @@
 {
     "api_key": "YOUR_API_KEY_HERE",
     "filter_usenet": true,
+    "flags_position": "end",
     "show_flags": true,
-    "timeout_seconds": 30,
+    "timeout_seconds": 60,
     "tracker_first": false,
     "url": "http://127.0.0.1:9696"
 }

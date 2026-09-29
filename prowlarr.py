@@ -9,6 +9,7 @@
 import datetime
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -78,8 +79,9 @@ _CONFIG_DATA: Dict[str, Any] = {
     'url': 'http://127.0.0.1:9696',  # Prowlarr instance URL
     'tracker_first': False,          # True: '[Tracker] Title', False: 'Title [Tracker]'
     'show_flags': True,              # True: Show '[Freeleech]' and other flags in release name
+    'flags_position': 'end',         # 'end': 'Title [Tracker] [Freeleech]', 'start': '[Freeleech] Title [Tracker]'
     'filter_usenet': True,           # True: Ignore Usenet releases to avoid broken .nzb downloads
-    'timeout_seconds': 30,           # HTTP request timeout in seconds
+    'timeout_seconds': 60,           # HTTP request timeout in seconds
 }
 _PRINTER_THREAD_LOCK = Lock()
 
@@ -148,8 +150,9 @@ class prowlarr:
     api_key = _CONFIG_DATA.get('api_key', 'YOUR_API_KEY_HERE')
     tracker_first = bool(_CONFIG_DATA.get('tracker_first', False))
     show_flags = bool(_CONFIG_DATA.get('show_flags', True))
+    flags_position = str(_CONFIG_DATA.get('flags_position', 'end')).lower()
     filter_usenet = bool(_CONFIG_DATA.get('filter_usenet', True))
-    timeout = int(_CONFIG_DATA.get('timeout_seconds', 30))
+    timeout = int(_CONFIG_DATA.get('timeout_seconds', 60))
 
     # Torznab / Newznab categories supported by Prowlarr
     supported_categories = {
@@ -248,10 +251,16 @@ class prowlarr:
             if not raw_title:
                 continue
 
+            # Sanitize title: replace newlines, carriage returns, tabs and collapse multiple spaces
+            cleaned_title = re.sub(r'[\r\n\t]+', ' ', str(raw_title))
+            cleaned_title = re.sub(r'\s{2,}', ' ', cleaned_title).strip()
+            if not cleaned_title:
+                continue
+
             indexer = item.get('indexer', 'Prowlarr')
 
             # Parse indexer flags (e.g. Freeleech, HalfFreeleech)
-            flag_str = ""
+            flag_badge = ""
             if self.show_flags:
                 indexer_flags = item.get('indexerFlags') or []
                 clean_flags = []
@@ -259,13 +268,20 @@ class prowlarr:
                     f_name = str(f).replace('G_', '')
                     clean_flags.append(f_name)
                 if clean_flags:
-                    flag_str = f"[{'/'.join(clean_flags)}] "
+                    flag_badge = f"[{'/'.join(clean_flags)}]"
 
-            # Format item name according to user preference
-            if self.tracker_first:
-                formatted_name = f"{flag_str}[{indexer}] {raw_title}"
+            # Format item name according to user preference (flags at the end by default)
+            if self.flags_position == 'start' and flag_badge:
+                if self.tracker_first:
+                    formatted_name = f"{flag_badge} [{indexer}] {cleaned_title}"
+                else:
+                    formatted_name = f"{flag_badge} {cleaned_title} [{indexer}]"
             else:
-                formatted_name = f"{flag_str}{raw_title} [{indexer}]"
+                flag_suffix = f" {flag_badge}" if flag_badge else ""
+                if self.tracker_first:
+                    formatted_name = f"[{indexer}] {cleaned_title}{flag_suffix}"
+                else:
+                    formatted_name = f"{cleaned_title} [{indexer}]{flag_suffix}"
 
             # Determine download link: prefer magnetUrl, fallback to downloadUrl
             magnet_url = item.get('magnetUrl')

@@ -49,8 +49,9 @@ Open `prowlarr.json` in any text editor and configure your instance:
 {
     "api_key": "YOUR_PROWLARR_API_KEY",
     "filter_usenet": true,
+    "flags_position": "end",
     "show_flags": true,
-    "timeout_seconds": 30,
+    "timeout_seconds": 60,
     "tracker_first": false,
     "url": "http://127.0.0.1:9696"
 }
@@ -63,12 +64,15 @@ Open `prowlarr.json` in any text editor and configure your instance:
   - `false` (default): `Title [Tracker]`
   - `true`: `[Tracker] Title`
 - `show_flags`:
-  - `true` (default): Prepend `[Freeleech]` or other tracker tags to release titles.
+  - `true` (default): Show `[Freeleech]` or other tracker tags.
   - `false`: Do not show flags.
+- `flags_position`:
+  - `"end"` (default): Append flags at the end (`Title [Tracker] [Freeleech]`), preserving alphabetical title sorting.
+  - `"start"`: Prepend flags at the beginning (`[Freeleech] Title [Tracker]`).
 - `filter_usenet`:
   - `true` (default): Filter out any Usenet releases returned by Prowlarr.
   - `false`: Include all results.
-- `timeout_seconds`: Maximum time in seconds to wait for Prowlarr response (default: `30`).
+- `timeout_seconds`: Maximum time in seconds to wait for Prowlarr response (default: `60`).
 
 ---
 

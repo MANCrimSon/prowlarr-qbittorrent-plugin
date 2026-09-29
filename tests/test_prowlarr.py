@@ -97,10 +97,9 @@ class TestProwlarrPlugin(unittest.TestCase):
         self.assertEqual(len(captured_results), 1)
         res = captured_results[0]
 
-        # Check Freeleech flag and title formatting
-        self.assertIn("[Freeleech]", res['name'])
-        self.assertIn("Ubuntu 24.04 LTS Desktop", res['name'])
-        self.assertIn("[RuTracker]", res['name'])
+        # Check Freeleech flag and title formatting at the end
+        self.assertTrue(res['name'].endswith("[Freeleech]"))
+        self.assertEqual(res['name'], "Ubuntu 24.04 LTS Desktop [RuTracker] [Freeleech]")
 
         # Check magnet preference
         self.assertEqual(res['link'], "magnet:?xt=urn:btih:ubuntu123")
@@ -121,6 +120,34 @@ class TestProwlarrPlugin(unittest.TestCase):
         engine.search("test")
         self.assertEqual(len(captured_errors), 1)
         self.assertIn("API key is not configured", captured_errors[0]['name'])
+
+    @patch('prowlarr.prowlarr.get_response')
+    def test_multiline_title_sanitization(self, mock_get_response):
+        raw_multiline = "CONTROL Resonant\n\nRemedy Entertainment\r\n\tРейтинг\n0.0\n\n2020\r\nОткрыть игру [2020]"
+        mock_releases = [{
+            "guid": "guid-multi",
+            "title": raw_multiline,
+            "size": 100000,
+            "indexer": "Byrutop",
+            "indexerFlags": ["Freeleech"],
+            "publishDate": "2024-04-25T10:00:00Z",
+            "downloadUrl": "http://127.0.0.1:9696/download/multi",
+            "protocol": "torrent"
+        }]
+        mock_get_response.return_value = json.dumps(mock_releases)
+
+        engine = prowlarr.prowlarr()
+        engine.api_key = "valid_key"
+        captured = []
+        engine.pretty_printer_thread_safe = lambda res: captured.append(res)
+        engine.search("control")
+
+        self.assertEqual(len(captured), 1)
+        name = captured[0]['name']
+        self.assertNotIn('\n', name)
+        self.assertNotIn('\r', name)
+        self.assertNotIn('\t', name)
+        self.assertIn("CONTROL Resonant Remedy Entertainment Рейтинг 0.0 2020 Открыть игру [2020] [Byrutop] [Freeleech]", name)
 
     def test_proxy_manager(self):
         pm = _ProxyManager()
