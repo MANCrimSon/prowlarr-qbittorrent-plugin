@@ -1,5 +1,5 @@
 # VERSION: 2.00
-# AUTHORS: Modern Prowlarr Community Plugin
+# AUTHORS: MANCrimSon (https://github.com/MANCrimSon)
 # CONTRIBUTORS:
 #               swannie-eire (original v1.0 plugin)
 #               Diego de las Heras (ngosang@hotmail.es)
