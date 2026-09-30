@@ -1,10 +1,10 @@
 # VERSION: 2.00
 # AUTHORS: MANCrimSon (https://github.com/MANCrimSon)
 # CONTRIBUTORS:
-#               swannie-eire (original v1.0 plugin)
-#               Diego de las Heras (ngosang@hotmail.es)
-#               hannsen (github.com/hannsen)
-#               Alexander Georgievskiy <galeksandrp@gmail.com>
+#   swannie-eire (original v1.0 plugin)
+#   Diego de las Heras (ngosang@hotmail.es)
+#   hannsen (github.com/hannsen)
+#   Alexander Georgievskiy <galeksandrp@gmail.com>
 
 import datetime
 import json
