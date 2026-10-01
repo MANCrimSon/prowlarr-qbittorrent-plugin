@@ -1,4 +1,4 @@
-# VERSION: 2.0.1
+# VERSION: 2.1
 # AUTHORS: MANCrimSon (https://github.com/MANCrimSon)
 # CONTRIBUTORS:
 #   swannie-eire (original v1.0 plugin)
