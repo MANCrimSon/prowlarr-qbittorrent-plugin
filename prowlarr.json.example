@@ -1,11 +1,11 @@
 {
+    "url": "http://127.0.0.1:9696",
     "api_key": "YOUR_API_KEY_HERE",
-    "filter_usenet": true,
-    "flags_position": "end",
     "multithreaded": true,
-    "show_flags": true,
     "thread_count": 10,
     "timeout_seconds": 30,
+    "filter_usenet": true,
     "tracker_first": false,
-    "url": "http://127.0.0.1:9696"
+    "show_flags": true,
+    "flags_position": "end"
 }

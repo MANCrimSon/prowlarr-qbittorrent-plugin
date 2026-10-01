@@ -84,15 +84,15 @@ _proxy_manager.enable_proxy(False)
 _CONFIG_FILE = 'prowlarr.json'
 _CONFIG_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), _CONFIG_FILE)
 _CONFIG_DATA: Dict[str, Any] = {
-    'api_key': 'YOUR_API_KEY_HERE',  # Prowlarr API key (Settings > General)
     'url': 'http://127.0.0.1:9696',  # Prowlarr instance URL
+    'api_key': 'YOUR_API_KEY_HERE',  # Prowlarr API key (Settings > General)
+    'multithreaded': True,           # True: Search indexers concurrently for progressive instant results
+    'thread_count': 10,              # Number of concurrent worker threads (editable: 10 is optimal for low CPU)
+    'timeout_seconds': 30,           # HTTP request timeout in seconds (30s is optimal for multi-threaded search)
+    'filter_usenet': True,           # True: Ignore Usenet releases to avoid broken .nzb downloads
     'tracker_first': False,          # True: '[Tracker] Title', False: 'Title [Tracker]'
     'show_flags': True,              # True: Show '[Freeleech]' and other flags in release name
     'flags_position': 'end',         # 'end': 'Title [Tracker] [Freeleech]', 'start': '[Freeleech] Title [Tracker]'
-    'filter_usenet': True,           # True: Ignore Usenet releases to avoid broken .nzb downloads
-    'timeout_seconds': 30,           # HTTP request timeout in seconds (30s is optimal for multi-threaded search)
-    'multithreaded': True,           # True: Search indexers concurrently for progressive instant results
-    'thread_count': 10,              # Number of concurrent worker threads (editable: 10 is optimal for low CPU)
 }
 _PRINTER_THREAD_LOCK = Lock()
 
@@ -129,7 +129,7 @@ def _load_configuration() -> None:
 def _save_configuration() -> None:
     try:
         with open(_CONFIG_PATH, 'w', encoding='utf-8') as f:
-            f.write(json.dumps(_CONFIG_DATA, indent=4, sort_keys=True))
+            f.write(json.dumps(_CONFIG_DATA, indent=4))
     except Exception:
         pass
 
