@@ -12,11 +12,13 @@ Maintained by **[MANCrimSon](https://github.com/MANCrimSon)**.
 
 ## Key Features & Improvements
 
+- **Progressive Multi-Threaded Search**: Queries all enabled indexers concurrently with configurable worker threads (`thread_count`), delivering instant search results in 1–2 seconds without waiting for slow or unresponsive trackers.
 - **Publication Date Support (`pub_date`)**: Converts Prowlarr ISO 8601 timestamps into POSIX timestamps so qBittorrent correctly displays and sorts releases by publication date.
 - **Tracker Flags & Freeleech Badges**: Automatically detects and displays `[Freeleech]`, `[halfleech]`, and other tracker flags right next to the tracker tag (e.g. `Release Title [Freeleech] [RuTracker]`).
 - **Alphabetical Sorting Preservation**: Badges and tracker tags are placed cleanly at the end of the title, allowing natural alphabetical sorting by release name.
 - **Multiline Title Sanitization**: Automatically strips harmful newline characters (`\r\n`, `\n`, `\t`) and collapses redundant spaces returned by certain indexers (like Byrutor, Catorrent), keeping all rows perfectly single-line and preventing UI table row distortion.
 - **Proxy Isolation (`_ProxyManager`)**: Automatically bypasses global HTTP/HTTPS and SOCKS proxies for local/internal Prowlarr connections (`127.0.0.1` / local subnet), eliminating loopback timeout issues while retaining proxy capability for external downloads.
+- **Granular Network Diagnostics**: Clear, specific error reporting identifying socket timeouts, connection refused, reverse proxy issues (HTTP 401, 403, 404, 500, 502, 504), and HTML captive portal / Cloudflare block detection.
 - **Native REST API Integration**: Queries `/api/v1/search` with URL-encoded parameters (full Unicode, Cyrillic, and special characters support without query corruption).
 - **Usenet Filtering (`filter_usenet`)**: Automatically discards Usenet releases (`.nzb`) to prevent broken downloads in qBittorrent.
 - **Dynamic Modern User-Agent**: Generates real-browser headers to prevent reverse proxies (Nginx, Cloudflare) from blocking automated search requests.
