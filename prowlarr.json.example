@@ -5,7 +5,7 @@
     "multithreaded": true,
     "show_flags": true,
     "thread_count": 10,
-    "timeout_seconds": 120,
+    "timeout_seconds": 30,
     "tracker_first": false,
     "url": "http://127.0.0.1:9696"
 }

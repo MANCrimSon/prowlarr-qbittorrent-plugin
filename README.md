@@ -61,7 +61,7 @@ Open `prowlarr.json` in any text editor to configure your connection:
     "show_flags": true,
     "flags_position": "end",
     "filter_usenet": true,
-    "timeout_seconds": 120,
+    "timeout_seconds": 30,
     "multithreaded": true,
     "thread_count": 10
 }
@@ -77,7 +77,7 @@ Open `prowlarr.json` in any text editor to configure your connection:
 | `show_flags` | `boolean` | `true` | Enables or disables displaying tracker flags (e.g., `[Freeleech]`, `[halfleech]`, `[DoubleUpload]`). |
 | `flags_position` | `string` | `"end"` | Placement of the freeleech/indexer flags: <br>&bull; `"end"`: Appends flags before tracker at the end (`Title [Freeleech] [Tracker]`). Preserves alphabetical sorting.<br>&bull; `"start"`: Prepends flags at the beginning (`[Freeleech] Title [Tracker]`). |
 | `filter_usenet` | `boolean` | `true` | Skips non-torrent (Usenet) releases returned by Prowlarr to avoid broken `.nzb` downloads in qBittorrent. |
-| `timeout_seconds` | `integer` | `120` | HTTP request timeout in seconds. Allows Prowlarr sufficient time to query multiple indexers concurrently. |
+| `timeout_seconds` | `integer` | `30` | HTTP request timeout in seconds. 30s allows individual indexers sufficient time to respond while preventing unresponsive indexers from hanging searches. |
 | `multithreaded` | `boolean` | `true` | Enables concurrent multi-threaded indexer searching for progressive, instant results in qBittorrent. |
 | `thread_count` | `integer` | `10` | Number of concurrent worker threads. 10 provides maximum search speed without high server CPU usage. |
 

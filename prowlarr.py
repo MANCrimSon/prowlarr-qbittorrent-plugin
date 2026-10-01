@@ -90,7 +90,7 @@ _CONFIG_DATA: Dict[str, Any] = {
     'show_flags': True,              # True: Show '[Freeleech]' and other flags in release name
     'flags_position': 'end',         # 'end': 'Title [Tracker] [Freeleech]', 'start': '[Freeleech] Title [Tracker]'
     'filter_usenet': True,           # True: Ignore Usenet releases to avoid broken .nzb downloads
-    'timeout_seconds': 120,          # HTTP request timeout in seconds (default 120s for multi-tracker searches)
+    'timeout_seconds': 30,           # HTTP request timeout in seconds (30s is optimal for multi-threaded search)
     'multithreaded': True,           # True: Search indexers concurrently for progressive instant results
     'thread_count': 10,              # Number of concurrent worker threads (editable: 10 is optimal for low CPU)
 }
@@ -169,7 +169,7 @@ class prowlarr:
     show_flags = bool(_CONFIG_DATA.get('show_flags', True))
     flags_position = str(_CONFIG_DATA.get('flags_position', 'end')).lower()
     filter_usenet = bool(_CONFIG_DATA.get('filter_usenet', True))
-    timeout = int(_CONFIG_DATA.get('timeout_seconds', 120))
+    timeout = int(_CONFIG_DATA.get('timeout_seconds', 30))
     multithreaded = bool(_CONFIG_DATA.get('multithreaded', True))
     thread_count = max(1, int(_CONFIG_DATA.get('thread_count', 10)))
     last_error: Optional[str] = None
