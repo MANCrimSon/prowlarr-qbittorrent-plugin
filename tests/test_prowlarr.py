@@ -256,6 +256,73 @@ class TestProwlarrPlugin(unittest.TestCase):
         self.assertEqual(len(captured), 1)
         self.assertIn("Received HTML instead of JSON", captured[0]['name'])
 
+    def test_multithreaded_search(self):
+        engine = prowlarr.prowlarr()
+        engine.api_key = "valid_key"
+        engine.multithreaded = True
+        engine.thread_count = 5
+
+        def mock_get(url):
+            if "/api/v1/indexer" in url:
+                return json.dumps([
+                    {"id": 10, "name": "TrackerTen", "enable": True, "protocol": "torrent"},
+                    {"id": 20, "name": "TrackerTwenty", "enable": True, "protocol": "torrent"},
+                    {"id": 30, "name": "UsenetNZB", "enable": True, "protocol": "usenet"},
+                    {"id": 40, "name": "DisabledTracker", "enable": False, "protocol": "torrent"}
+                ])
+            elif "indexerIds=10" in url:
+                return json.dumps([{
+                    "guid": "g-10",
+                    "title": "Release from Tracker 10",
+                    "size": 1000,
+                    "indexer": "TrackerTen",
+                    "downloadUrl": "http://127.0.0.1:9696/dl/10"
+                }])
+            elif "indexerIds=20" in url:
+                return json.dumps([{
+                    "guid": "g-20",
+                    "title": "Release from Tracker 20",
+                    "size": 2000,
+                    "indexer": "TrackerTwenty",
+                    "downloadUrl": "http://127.0.0.1:9696/dl/20"
+                }])
+            return "[]"
+
+        engine.get_response = MagicMock(side_effect=mock_get)
+        captured = []
+        engine.pretty_printer_thread_safe = lambda res: captured.append(res)
+        engine.search("ubuntu")
+
+        # Releases from TrackerTen and TrackerTwenty must both be captured
+        self.assertEqual(len(captured), 2)
+        names = [c['name'] for c in captured]
+        self.assertTrue(any("TrackerTen" in n for n in names))
+        self.assertTrue(any("TrackerTwenty" in n for n in names))
+
+    def test_multithreaded_disabled_fallback(self):
+        engine = prowlarr.prowlarr()
+        engine.api_key = "valid_key"
+        engine.multithreaded = False
+
+        called_urls = []
+        def mock_get(url):
+            called_urls.append(url)
+            return json.dumps([{
+                "guid": "g-mono",
+                "title": "Monolithic Release",
+                "size": 5000,
+                "indexer": "MonoTracker",
+                "downloadUrl": "http://127.0.0.1:9696/dl/mono"
+            }])
+
+        engine.get_response = MagicMock(side_effect=mock_get)
+        captured = []
+        engine.pretty_printer_thread_safe = lambda res: captured.append(res)
+        engine.search("ubuntu")
+
+        self.assertEqual(len(captured), 1)
+        self.assertIn("indexerIds=-2", called_urls[0])
+
 
 if __name__ == '__main__':
     unittest.main()
