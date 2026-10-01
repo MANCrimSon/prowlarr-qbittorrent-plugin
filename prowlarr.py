@@ -1,4 +1,4 @@
-# VERSION: 2.00
+# VERSION: 2.01
 # AUTHORS: MANCrimSon (https://github.com/MANCrimSon)
 # CONTRIBUTORS:
 #   swannie-eire (original v1.0 plugin)
@@ -10,6 +10,7 @@ import datetime
 import json
 import os
 import re
+import socket
 import sys
 import urllib.error
 import urllib.parse
@@ -88,7 +89,7 @@ _CONFIG_DATA: Dict[str, Any] = {
     'show_flags': True,              # True: Show '[Freeleech]' and other flags in release name
     'flags_position': 'end',         # 'end': 'Title [Tracker] [Freeleech]', 'start': '[Freeleech] Title [Tracker]'
     'filter_usenet': True,           # True: Ignore Usenet releases to avoid broken .nzb downloads
-    'timeout_seconds': 60,           # HTTP request timeout in seconds
+    'timeout_seconds': 120,          # HTTP request timeout in seconds (default 120s for multi-tracker searches)
 }
 _PRINTER_THREAD_LOCK = Lock()
 
@@ -159,7 +160,8 @@ class prowlarr:
     show_flags = bool(_CONFIG_DATA.get('show_flags', True))
     flags_position = str(_CONFIG_DATA.get('flags_position', 'end')).lower()
     filter_usenet = bool(_CONFIG_DATA.get('filter_usenet', True))
-    timeout = int(_CONFIG_DATA.get('timeout_seconds', 60))
+    timeout = int(_CONFIG_DATA.get('timeout_seconds', 120))
+    last_error: Optional[str] = None
 
     # Torznab / Newznab categories supported by Prowlarr
     supported_categories = {
@@ -229,19 +231,23 @@ class prowlarr:
         response_text = self.get_response(search_endpoint)
 
         if response_text is None:
-            self.handle_error(f"Failed to connect to Prowlarr at {self.url}", what)
+            err = self.last_error or f"Failed to connect to Prowlarr at {self.url}"
+            self.handle_error(err, what)
             return
 
         try:
             results = json.loads(response_text)
         except json.JSONDecodeError:
-            self.handle_error("Invalid JSON response received from Prowlarr", what)
+            if "<html" in response_text.lower():
+                self.handle_error("Received HTML instead of JSON (check reverse proxy, URL Base, or Cloudflare)", what)
+            else:
+                self.handle_error("Invalid JSON response received from Prowlarr", what)
             return
 
         if not isinstance(results, list):
             # Check for Prowlarr error messages (e.g. {"message": "Unauthorized"})
             if isinstance(results, dict) and 'message' in results:
-                self.handle_error(f"Prowlarr error: {results['message']}", what)
+                self.handle_error(f"Prowlarr API error: {results['message']}", what)
             else:
                 self.handle_error("Unexpected response schema from Prowlarr", what)
             return
@@ -335,6 +341,7 @@ class prowlarr:
 
     def get_response(self, query_url: str) -> Optional[str]:
         """Send HTTP GET request to Prowlarr API with proper headers and cookie handling."""
+        self.last_error = None
         try:
             req = urllib.request.Request(query_url)
             req.add_header('User-Agent', _get_browser_user_agent())
@@ -351,7 +358,42 @@ class prowlarr:
                 redirect_url = e.headers.get('Location')
                 if redirect_url and redirect_url.startswith('magnet:?'):
                     return redirect_url
-        except Exception:
+
+            if e.code == 401:
+                self.last_error = "Invalid API key (HTTP 401 Unauthorized)"
+            elif e.code == 403:
+                self.last_error = "Access forbidden (HTTP 403 Forbidden)"
+            elif e.code == 404:
+                self.last_error = "Endpoint not found (HTTP 404 - check URL or URL Base)"
+            elif e.code == 500:
+                self.last_error = "Prowlarr server error (HTTP 500 Internal Server Error)"
+            elif e.code == 502:
+                self.last_error = "Bad Gateway (HTTP 502 - reverse proxy cannot reach Prowlarr)"
+            elif e.code == 503:
+                self.last_error = "Service Unavailable (HTTP 503 - Prowlarr is busy or restarting)"
+            elif e.code == 504:
+                self.last_error = "Gateway Timeout (HTTP 504 - reverse proxy timed out waiting for Prowlarr)"
+            else:
+                self.last_error = f"HTTP Error {e.code}: {e.reason}"
+            return None
+        except urllib.error.URLError as e:
+            reason = e.reason
+            if isinstance(reason, (socket.timeout, TimeoutError)) or "timed out" in str(reason).lower():
+                self.last_error = f"Request timed out after {self.timeout}s (Prowlarr indexers responded too slowly)"
+            elif isinstance(reason, ConnectionRefusedError) or "connection refused" in str(reason).lower() or "10061" in str(reason):
+                self.last_error = f"Connection refused (is Prowlarr running at {self.url}?)"
+            elif isinstance(reason, socket.gaierror) or "getaddrinfo failed" in str(reason).lower():
+                self.last_error = f"Cannot resolve host in {self.url} (check address/domain)"
+            elif "certificate" in str(reason).lower() or "ssl" in str(reason).lower():
+                self.last_error = f"SSL/TLS certificate error connecting to {self.url}: {reason}"
+            else:
+                self.last_error = f"Network connection failed: {reason}"
+            return None
+        except (socket.timeout, TimeoutError):
+            self.last_error = f"Request timed out after {self.timeout}s (Prowlarr indexers responded too slowly)"
+            return None
+        except Exception as e:
+            self.last_error = f"Connection error: {e}"
             return None
 
     def handle_error(self, error_msg: str, what: str) -> None:

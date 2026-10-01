@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import unittest
+import urllib.error
 from unittest.mock import MagicMock, patch
 
 # Add current directory to path
@@ -210,6 +211,50 @@ class TestProwlarrPlugin(unittest.TestCase):
             self.assertEqual(engine_url, "http://127.0.0.1:9696")
             self.assertEqual(desc_link, "https://kinozal.tv/details.php?id=789")
             self.assertTrue(int(pub_date) > 0)
+
+    def test_http_401_diagnostics(self):
+        import io
+        engine = prowlarr.prowlarr()
+        engine.api_key = "wrong_key"
+
+        http_err = urllib.error.HTTPError("http://127.0.0.1:9696", 401, "Unauthorized", {}, io.BytesIO(b""))
+        with patch('urllib.request.OpenerDirector.open', side_effect=http_err):
+            res = engine.get_response("http://127.0.0.1:9696/api/v1/search")
+            self.assertIsNone(res)
+            self.assertIn("Invalid API key (HTTP 401 Unauthorized)", engine.last_error)
+
+    def test_timeout_diagnostics(self):
+        engine = prowlarr.prowlarr()
+        engine.api_key = "valid_key"
+        engine.timeout = 120
+
+        url_err = urllib.error.URLError(TimeoutError("The read operation timed out"))
+        with patch('urllib.request.OpenerDirector.open', side_effect=url_err):
+            res = engine.get_response("http://127.0.0.1:9696/api/v1/search")
+            self.assertIsNone(res)
+            self.assertIn("Request timed out after 120s", engine.last_error)
+
+    def test_connection_refused_diagnostics(self):
+        engine = prowlarr.prowlarr()
+        engine.api_key = "valid_key"
+
+        url_err = urllib.error.URLError(ConnectionRefusedError("Connection refused"))
+        with patch('urllib.request.OpenerDirector.open', side_effect=url_err):
+            res = engine.get_response("http://127.0.0.1:9696/api/v1/search")
+            self.assertIsNone(res)
+            self.assertIn("Connection refused", engine.last_error)
+
+    def test_html_response_diagnostics(self):
+        engine = prowlarr.prowlarr()
+        engine.api_key = "valid_key"
+        engine.get_response = MagicMock(return_value="<html><body>Cloudflare Blocked</body></html>")
+
+        captured = []
+        engine.pretty_printer_thread_safe = lambda res: captured.append(res)
+        engine.search("test")
+
+        self.assertEqual(len(captured), 1)
+        self.assertIn("Received HTML instead of JSON", captured[0]['name'])
 
 
 if __name__ == '__main__':
