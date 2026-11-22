@@ -86,6 +86,7 @@ class TestProwlarrPlugin(unittest.TestCase):
 
         engine = prowlarr.prowlarr()
         engine.api_key = "valid_test_key"
+        engine.multithreaded = False
         engine.show_flags = True
         engine.filter_usenet = True
 
@@ -139,6 +140,7 @@ class TestProwlarrPlugin(unittest.TestCase):
 
         engine = prowlarr.prowlarr()
         engine.api_key = "valid_key"
+        engine.multithreaded = False
         captured = []
         engine.pretty_printer_thread_safe = lambda res: captured.append(res)
         engine.search("control")
@@ -191,6 +193,7 @@ class TestProwlarrPlugin(unittest.TestCase):
 
             engine = prowlarr.prowlarr()
             engine.api_key = "test_key"
+            engine.multithreaded = False
             engine.get_response = MagicMock(return_value=json.dumps(mock_release))
 
             mock_nova.captured_output.clear()
@@ -262,14 +265,16 @@ class TestProwlarrPlugin(unittest.TestCase):
         engine.multithreaded = True
         engine.thread_count = 5
 
-        def mock_get(url):
+        called_urls = []
+        def mock_fetch(url):
+            called_urls.append(url)
             if "/api/v1/indexer" in url:
                 return json.dumps([
                     {"id": 10, "name": "TrackerTen", "enable": True, "protocol": "torrent"},
                     {"id": 20, "name": "TrackerTwenty", "enable": True, "protocol": "torrent"},
                     {"id": 30, "name": "UsenetNZB", "enable": True, "protocol": "usenet"},
                     {"id": 40, "name": "DisabledTracker", "enable": False, "protocol": "torrent"}
-                ])
+                ]), None
             elif "indexerIds=10" in url:
                 return json.dumps([{
                     "guid": "g-10",
@@ -277,7 +282,7 @@ class TestProwlarrPlugin(unittest.TestCase):
                     "size": 1000,
                     "indexer": "TrackerTen",
                     "downloadUrl": "http://127.0.0.1:9696/dl/10"
-                }])
+                }]), None
             elif "indexerIds=20" in url:
                 return json.dumps([{
                     "guid": "g-20",
@@ -285,10 +290,10 @@ class TestProwlarrPlugin(unittest.TestCase):
                     "size": 2000,
                     "indexer": "TrackerTwenty",
                     "downloadUrl": "http://127.0.0.1:9696/dl/20"
-                }])
-            return "[]"
+                }]), None
+            return "[]", None
 
-        engine.get_response = MagicMock(side_effect=mock_get)
+        engine._fetch_response = MagicMock(side_effect=mock_fetch)
         captured = []
         engine.pretty_printer_thread_safe = lambda res: captured.append(res)
         engine.search("ubuntu")
@@ -298,6 +303,55 @@ class TestProwlarrPlugin(unittest.TestCase):
         names = [c['name'] for c in captured]
         self.assertTrue(any("TrackerTen" in n for n in names))
         self.assertTrue(any("TrackerTwenty" in n for n in names))
+        # API key must not be exposed in query string
+        for url in called_urls:
+            self.assertNotIn("apikey=", url)
+
+    def test_multithreaded_zero_active_indexers_no_fallback(self):
+        engine = prowlarr.prowlarr()
+        engine.api_key = "valid_key"
+        engine.multithreaded = True
+        engine.thread_count = 5
+
+        called_urls = []
+        def mock_fetch(url):
+            called_urls.append(url)
+            if "/api/v1/indexer" in url:
+                return json.dumps([
+                    {"id": 30, "name": "UsenetOnly", "enable": True, "protocol": "usenet"},
+                    {"id": 40, "name": "DisabledTracker", "enable": False, "protocol": "torrent"},
+                ]), None
+            return "[]", None
+
+        engine._fetch_response = MagicMock(side_effect=mock_fetch)
+        captured = []
+        engine.pretty_printer_thread_safe = lambda res: captured.append(res)
+        engine.search("ubuntu")
+
+        self.assertEqual(len(captured), 0)
+        self.assertEqual(len(called_urls), 1)
+        self.assertIn("/api/v1/indexer", called_urls[0])
+
+    def test_multithreaded_all_indexers_failed_reports_error(self):
+        engine = prowlarr.prowlarr()
+        engine.api_key = "valid_key"
+        engine.multithreaded = True
+        engine.thread_count = 5
+
+        def mock_fetch(url):
+            if "/api/v1/indexer" in url:
+                return json.dumps([
+                    {"id": 10, "name": "TrackerTen", "enable": True, "protocol": "torrent"},
+                ]), None
+            return None, "Request timed out after 30s"
+
+        engine._fetch_response = MagicMock(side_effect=mock_fetch)
+        captured = []
+        engine.pretty_printer_thread_safe = lambda res: captured.append(res)
+        engine.search("ubuntu")
+
+        self.assertEqual(len(captured), 1)
+        self.assertIn("Request timed out after 30s", captured[0]['name'])
 
     def test_multithreaded_disabled_fallback(self):
         engine = prowlarr.prowlarr()
@@ -322,6 +376,88 @@ class TestProwlarrPlugin(unittest.TestCase):
 
         self.assertEqual(len(captured), 1)
         self.assertIn("indexerIds=-2", called_urls[0])
+        self.assertNotIn("apikey=", called_urls[0])
+
+    def test_infohash_magnet_fallback(self):
+        engine = prowlarr.prowlarr()
+        item = {
+            "title": "Debian 12 ISO",
+            "indexer": "DHTIndexer",
+            "infoHash": "0123456789abcdef0123456789abcdef01234567",
+            "size": 700000000,
+            "protocol": "torrent",
+        }
+        res = engine.format_release(item)
+        self.assertIsNotNone(res)
+        self.assertTrue(res['link'].startswith("magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567"))
+
+    def test_safe_int_config_guard(self):
+        self.assertEqual(prowlarr._safe_int("25", 10), 25)
+        self.assertEqual(prowlarr._safe_int("invalid", 10), 10)
+        self.assertEqual(prowlarr._safe_int(None, 30), 30)
+        self.assertEqual(prowlarr._safe_int(True, 10), 10)
+        self.assertEqual(prowlarr._safe_int(0, 10, min_val=1), 1)
+
+    def test_download_torrent_single_request_and_no_api_key_leak(self):
+        import io
+        engine = prowlarr.prowlarr()
+        engine.url = "http://127.0.0.1:9696"
+        engine.api_key = "secret_prowlarr_key"
+
+        captured_headers = {}
+
+        class DummyResp:
+            headers = {}
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self):
+                return b"d8:announce19:http://example.com/e"
+
+        def fake_open(req, timeout=None):
+            captured_headers.update(dict(req.header_items()))
+            return DummyResp()
+
+        stdout_buf = io.StringIO()
+        with patch('urllib.request.OpenerDirector.open', side_effect=fake_open), \
+             patch('sys.stdout', stdout_buf):
+            engine.download_torrent("https://external-tracker.example/file.torrent")
+
+        # X-Api-Key must NOT be sent to external tracker URLs
+        self.assertNotIn('X-api-key', captured_headers)
+        self.assertNotIn('X-Api-Key', captured_headers)
+
+        output = stdout_buf.getvalue().strip()
+        tmp_path, orig_url = output.split(' ', 1)
+        self.assertEqual(orig_url, "https://external-tracker.example/file.torrent")
+        self.assertTrue(os.path.exists(tmp_path))
+        try:
+            with open(tmp_path, 'rb') as f:
+                self.assertEqual(f.read(), b"d8:announce19:http://example.com/e")
+        finally:
+            os.unlink(tmp_path)
+
+    def test_download_torrent_magnet_redirect(self):
+        import io
+        engine = prowlarr.prowlarr()
+        engine.url = "http://127.0.0.1:9696"
+        engine.api_key = "secret_prowlarr_key"
+
+        magnet = "magnet:?xt=urn:btih:abcdef123456"
+        http_err = urllib.error.HTTPError(
+            "http://127.0.0.1:9696/1/download",
+            302,
+            "Found",
+            {"Location": magnet},
+            io.BytesIO(b""),
+        )
+        stdout_buf = io.StringIO()
+        with patch('urllib.request.OpenerDirector.open', side_effect=http_err), \
+             patch('sys.stdout', stdout_buf):
+            engine.download_torrent("http://127.0.0.1:9696/1/download")
+
+        self.assertEqual(stdout_buf.getvalue().strip(), f"{magnet} http://127.0.0.1:9696/1/download")
 
 
 if __name__ == '__main__':
